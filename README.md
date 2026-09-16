@@ -1,7 +1,7 @@
 # dita_validation
 
 Modul C aus dem modularisierten DITA-Dokumentenmanagement
-(Konfigurationsprotokoll v16, Abschnitt 7). Prüft DITA-Content (Topics,
+(Konfigurationsprotokoll v22, Abschnitt 7). Prüft DITA-Content (Topics,
 Maps) gegen die passenden DTDs sowie gegen die verbindlichen
 Datei-Konventionen (DOCTYPE-Version, `xml:lang`) – kundenneutral,
 einmalig/global, für jedes Produkt verbindlich (kein `vars.USE_MODULE_X`
@@ -37,13 +37,13 @@ dita_validation/
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: <org>/dita_validation/.github/actions/validate@v1.0.0
+- uses: <org>/dita_validation/.github/actions/validate@v1.0.1
   with:
     pfad: .
     root: docs/project_content.ditamap   # bei B allein: reuse/reusables.ditamap
 ```
 
-Die Versionsnummer (`@v1.0.0`) wird von der aufrufenden Pipeline explizit
+Die Versionsnummer (`@v1.0.1`) wird von der aufrufenden Pipeline explizit
 eingetragen – nie automatisch auf den neuesten Stand aktualisiert
 (Konfigurationsprotokoll Abschnitt 6). `actions/checkout` ist notwendig:
 Die Composite Action checkt das aufrufende Repo nicht automatisch aus.
@@ -76,7 +76,16 @@ offiziellen DTDs selbst).
 gemeinsames Setup-Modul mit D–H (bewusste Architekturentscheidung,
 Konfigurationsprotokoll Abschnitt 4). Gecacht über `actions/cache`
 (Schlüssel `dita-ot-4.4.0`), nur falls nicht bereits über PATH
-verfügbar.
+verfügbar. Download, Entpacken und Cache liegen in `runner.temp` – nie
+im Arbeitsordner des aufrufenden Repos, sonst würde die Prüfung
+DITA-OTs eigene ~400 `.dita`-Dateien mitprüfen. Als zusätzliche
+Absicherung überspringt die Dateisuche jeden Ordner, der eine
+DITA-OT-Installation ist (erkennbar an `plugins/org.dita.base`), und
+nennt ihn im Log.
+
+**Laufzeit steht im Log.** Am Ende jedes Laufs werden die Dauer der
+Einzeldatei-Schleife (gesamt und pro Datei) sowie ggf. der transitiven
+Prüfung ausgegeben.
 
 **Einmaliger manueller Schritt, falls dieses Repo privat ist:** Unter
 „Settings → Actions → General → Access" muss der Zugriff für A/B
@@ -84,8 +93,15 @@ freigegeben werden (Details in `OPEN_ISSUES.md`).
 
 **Vor produktivem Einsatz noch zu erledigen** (Details in
 `OPEN_ISSUES.md`): Verifikation unter Python 3.14 (entwickelt/getestet
-mit 3.12), sowie der komplette repo-übergreifende Aufruf aus einem
-echten A- oder B-Repo.
+mit 3.12), sowie ein sauberer Durchlauf gegen echten A- und B-Content
+mit v1.0.1.
+
+## Versionen
+
+| Version | Änderung |
+|---|---|
+| v1.0.1 | DITA-OT wird in `runner.temp` statt im Arbeitsordner bereitgestellt; Dateisuche überspringt DITA-OT-Installationen; Laufzeitausgabe. Keine Änderung am Prüfergebnis für echten Content. |
+| v1.0.0 | Erste Version. Bekannter Fehler: prüfte DITA-OTs eigene Dateien im Arbeitsordner mit – nicht mehr verwenden. |
 
 ## Tests lokal ausführen
 

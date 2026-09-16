@@ -28,25 +28,35 @@ runs:
           echo "gefunden=false" >> "$GITHUB_OUTPUT"
         fi
 
-    - name: DITA-OT-Cache (nur falls nicht bereits vorhanden)
+    - name: DITA-OT-Cache wiederherstellen (nur falls nicht bereits vorhanden)
       if: steps.dita-check.outputs.gefunden != 'true'
       id: dita-ot-cache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
-        path: dita-ot-4.4
+        path: ${{ runner.temp }}/dita-ot-4.4
         key: dita-ot-4.4.0
 
     - name: DITA-OT herunterladen (nur bei Cache-Fehltreffer)
       if: steps.dita-check.outputs.gefunden != 'true' && steps.dita-ot-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -sL -o dita-ot.zip https://github.com/dita-ot/dita-ot/releases/download/4.4/dita-ot-4.4.zip
-        unzip -q dita-ot.zip
+        curl -sL -o "$RUNNER_TEMP/dita-ot.zip" https://github.com/dita-ot/dita-ot/releases/download/4.4/dita-ot-4.4.zip
+        unzip -q "$RUNNER_TEMP/dita-ot.zip" -d "$RUNNER_TEMP"
+        rm "$RUNNER_TEMP/dita-ot.zip"
+
+    # Sofort speichern, nicht erst am Jobende: actions/cache speichert
+    # sonst nur bei erfolgreichem Job (bei Pruefbefunden also nie).
+    - name: DITA-OT-Cache speichern (nur nach frischem Download)
+      if: steps.dita-check.outputs.gefunden != 'true' && steps.dita-ot-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ runner.temp }}/dita-ot-4.4
+        key: dita-ot-4.4.0
 
     - name: Bereitgestelltes DITA-OT zu PATH hinzufuegen
       if: steps.dita-check.outputs.gefunden != 'true'
       shell: bash
-      run: echo "${{ github.workspace }}/dita-ot-4.4/bin" >> "$GITHUB_PATH"
+      run: echo "${{ runner.temp }}/dita-ot-4.4/bin" >> "$GITHUB_PATH"
 
     - name: Pruefung ausfuehren
       shell: bash

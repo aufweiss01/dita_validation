@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE map PUBLIC "-//OASIS//DTD DITA 1.3 Map//EN" "map.dtd">
+<map xml:lang="de-DE">
+  <title>Beispielmap</title>
+  <topicref href="c_example.dita"/>
+  <topicref href="t_example.dita"/>
+  <topicref href="r_example.dita"/>
+  <topicref href="ts_example.dita"/>
+</map>

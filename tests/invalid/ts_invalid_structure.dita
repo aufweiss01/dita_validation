@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE troubleshooting PUBLIC "-//OASIS//DTD DITA 1.3 Troubleshooting//EN" "troubleshooting.dtd">
+<troubleshooting id="ts_invalid" xml:lang="de-DE">
+  <title>Fehlerhaft</title>
+  <troublebody>
+    <condition>
+      <p>Platzhaltertext.</p>
+    </condition>
+  </troublebody>
+</troubleshooting>

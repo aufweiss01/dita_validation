@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA 1.3 Concept//EN" "concept.dtd">
+<concept id="c_example" xml:lang="de-DE">
+  <title>Beispiel</title>
+  <prolog>
+    <metadata>
+      <audience type="" job="" experiencelevel=""/>
+      <othermeta name="status" content="draft"/>
+      <othermeta name="lifecycle-stage" content=""/>
+    </metadata>
+  </prolog>
+  <conbody>
+    <p>Platzhaltertext.</p>
+  </conbody>
+</concept>

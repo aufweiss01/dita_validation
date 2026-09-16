@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA 1.3 Base Topic//EN" "basetopic.dtd">
+<topic id="warnings_invalid" xml:lang="de-DE">
+  <title>Fehlerhaft</title>
+  <body>
+    <hazardstatement type="warning" id="ungueltig">
+      <messagepanel>
+        <typeofhazard>Text</typeofhazard>
+        <consequence>Text</consequence>
+        <howtoavoid>
+          <ul>
+            <li>Nicht erlaubt laut DTD.</li>
+          </ul>
+        </howtoavoid>
+      </messagepanel>
+    </hazardstatement>
+  </body>
+</topic>

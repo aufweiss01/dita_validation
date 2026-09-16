@@ -1,0 +1,58 @@
+name: 'DITA-Validierung'
+description: 'Prueft DITA-Content (Topics, Maps) gegen die passenden DTDs sowie gegen die verbindlichen Datei-Konventionen (DOCTYPE-Version, xml:lang).'
+
+inputs:
+  pfad:
+    description: 'Zu pruefender Pfad im aufrufenden Repository (A- oder B-Content)'
+    required: false
+    default: '.'
+  root:
+    description: 'Optional: Pfad zu einer Root-Map (relativ zu pfad) fuer zusaetzliche transitive Pruefung, z.B. docs/project_content.ditamap (A) oder reuse/reusables.ditamap (B). Leer = nur Einzeldatei-Pruefung.'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.14'
+
+    - name: Pruefen, ob DITA-OT bereits auf PATH verfuegbar ist
+      id: dita-check
+      shell: bash
+      run: |
+        if command -v dita >/dev/null 2>&1; then
+          echo "gefunden=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "gefunden=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: DITA-OT-Cache (nur falls nicht bereits vorhanden)
+      if: steps.dita-check.outputs.gefunden != 'true'
+      id: dita-ot-cache
+      uses: actions/cache@v4
+      with:
+        path: dita-ot-4.4
+        key: dita-ot-4.4.0
+
+    - name: DITA-OT herunterladen (nur bei Cache-Fehltreffer)
+      if: steps.dita-check.outputs.gefunden != 'true' && steps.dita-ot-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        curl -sL -o dita-ot.zip https://github.com/dita-ot/dita-ot/releases/download/4.4/dita-ot-4.4.zip
+        unzip -q dita-ot.zip
+
+    - name: Bereitgestelltes DITA-OT zu PATH hinzufuegen
+      if: steps.dita-check.outputs.gefunden != 'true'
+      shell: bash
+      run: echo "${{ github.workspace }}/dita-ot-4.4/bin" >> "$GITHUB_PATH"
+
+    - name: Pruefung ausfuehren
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.root }}" ]; then
+          python ${{ github.action_path }}/validate_dita.py --input ${{ inputs.pfad }} --root ${{ inputs.root }}
+        else
+          python ${{ github.action_path }}/validate_dita.py --input ${{ inputs.pfad }}
+        fi

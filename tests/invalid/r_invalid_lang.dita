@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE reference PUBLIC "-//OASIS//DTD DITA 1.3 Reference//EN" "reference.dtd">
+<reference id="r_invalid">
+  <title>Fehlerhaft</title>
+  <refbody>
+    <section>
+      <p>Platzhaltertext.</p>
+    </section>
+  </refbody>
+</reference>

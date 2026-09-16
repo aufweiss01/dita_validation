@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE map PUBLIC "-//OASIS//DTD DITA 1.3 Map//EN" "map.dtd">
+<map xml:lang="de-DE">
+  <title>Fehlerhaft</title>
+  <reltable>
+    <relheader>
+      <relcolspec type="concept"/>
+    </relheader>
+    <relcell><topicref href="c_example.dita"/></relcell>
+  </reltable>
+</map>

@@ -40,6 +40,14 @@ Drei Pruefmechanismen (der dritte optional, ergaenzend):
      Konstellationen zusaetzlich bestehen (repo-topologie-unabhaengig,
      faengt auch verwaiste, nicht in der Root-Map verankerte Dateien ab).
 
+Dateisuche (Stand v1.0.1): Ordner, die eine DITA-OT-Installation sind
+(erkennbar am Unterordner plugins/org.dita.base), werden uebersprungen
+und im Log mit Dateizahl genannt - nie stillschweigend. Hintergrund:
+v1.0.0 hat im Pilot DITA-OT's eigene ~400 Dateien mitgeprueft, weil die
+Action DITA-OT im Arbeitsordner entpackt hatte (dort seit v1.0.1 in
+runner.temp korrigiert). Der Ausschluss ist die zusaetzliche Absicherung,
+falls ein anderes Werkzeug DITA-OT im Arbeitsordner ablegt.
+
 Aufruf:
     python validate_dita.py --input <repo1> [<repo2> ...] [--dita-ot <pfad-zur-dita.bat>] [--root <root-map>]
 
@@ -55,6 +63,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import xml.dom.minidom
@@ -89,14 +98,41 @@ class Befund:
 
 # --- Schritt 1: Dateien finden -----------------------------------------
 
+# Kennzeichen einer DITA-OT-Installation (Unterordner des Basis-Plugins).
+# Inhaltsbasiert statt ueber den Ordnernamen - erkennt auch umbenannte
+# Installationen und schliesst keinen Kundenordner versehentlich aus.
+DITA_OT_KENNZEICHEN = Path("plugins") / "org.dita.base"
+
+
+def _dita_ot_ordner(datei, wurzel, cache):
+    """
+    Gibt den Ordner der DITA-OT-Installation zurueck, in der `datei`
+    liegt (relativ zu `wurzel` gesucht), sonst None. `cache` merkt sich
+    bereits gepruefte Ordner.
+    """
+    ordner = datei.parent
+    while True:
+        if ordner not in cache:
+            cache[ordner] = (ordner / DITA_OT_KENNZEICHEN).is_dir()
+        if cache[ordner]:
+            return ordner
+        if ordner == wurzel or ordner == ordner.parent:
+            return None
+        ordner = ordner.parent
+
+
 def find_dita_files(wurzelpfade):
     """
     Sucht rekursiv nach .dita- und .ditamap-Dateien unterhalb der
     uebergebenen Wurzelpfade. Keine Ordnerannahmen (wichtig, da B als
-    Submodul in A eingebunden sein kann - siehe Chatverlauf). .git wird
-    ausgeschlossen.
+    Submodul in A eingebunden sein kann - siehe Chatverlauf). .git und
+    DITA-OT-Installationen werden ausgeschlossen.
+
+    Rueckgabe: (Dateiliste, {ausgeschlossener DITA-OT-Ordner: Dateizahl})
     """
     gefunden = []
+    ausgeschlossen = {}
+    kennzeichen_cache = {}
     for wurzel in wurzelpfade:
         wurzel = Path(wurzel)
         if not wurzel.exists():
@@ -104,6 +140,10 @@ def find_dita_files(wurzelpfade):
         for muster in ("*.dita", "*.ditamap"):
             for datei in wurzel.rglob(muster):
                 if ".git" in datei.parts:
+                    continue
+                dita_ot = _dita_ot_ordner(datei, wurzel, kennzeichen_cache)
+                if dita_ot is not None:
+                    ausgeschlossen[dita_ot] = ausgeschlossen.get(dita_ot, 0) + 1
                     continue
                 gefunden.append(datei)
     # Duplikate entfernen (falls sich uebergebene Pfade ueberschneiden),
@@ -115,7 +155,7 @@ def find_dita_files(wurzelpfade):
         if auf not in gesehen:
             gesehen.add(auf)
             eindeutig.append(datei)
-    return eindeutig
+    return eindeutig, ausgeschlossen
 
 
 # --- Schritt 2: DTD-Konformitaet + Referenz-Integritaet (DITA-OT) ------
@@ -288,35 +328,49 @@ def main():
         return 2
 
     try:
-        dateien = find_dita_files(args.input)
+        dateien, ausgeschlossen = find_dita_files(args.input)
     except FileNotFoundError as e:
         print(f"FEHLER: {e}", file=sys.stderr)
         return 2
+
+    for ordner, anzahl in ausgeschlossen.items():
+        print(f"HINWEIS: DITA-OT-Installation uebersprungen: {ordner} "
+              f"({anzahl} .dita/.ditamap-Datei(en) nicht geprueft)")
 
     if not dateien:
         print("Keine .dita/.ditamap-Dateien gefunden.")
         return 0
 
     alle_befunde = []
+    dauer_transitiv = None
     with tempfile.TemporaryDirectory(prefix="dita_validation_") as temp_basis:
+        start = time.monotonic()
         for datei in dateien:
             alle_befunde.extend(check_dtd(datei, dita_ot_pfad, temp_basis))
             alle_befunde.extend(check_doctype_version(datei))
             alle_befunde.extend(check_xml_lang(datei))
+        dauer_einzeln = time.monotonic() - start
 
         if args.root:
             root_pfad = Path(args.root)
             if not root_pfad.exists():
                 print(f"FEHLER: --root Pfad nicht gefunden: {root_pfad}", file=sys.stderr)
                 return 2
+            start = time.monotonic()
             alle_befunde.extend(check_transitive(root_pfad, dita_ot_pfad, temp_basis))
+            dauer_transitiv = time.monotonic() - start
 
     fehler = [b for b in alle_befunde if b.schweregrad == "FEHLER"]
     warnungen = [b for b in alle_befunde if b.schweregrad == "WARNUNG"]
 
     print(f"\nGeprueft: {len(dateien)} Datei(en)")
     print(f"Fehler:   {len(fehler)}")
-    print(f"Warnungen: {len(warnungen)}\n")
+    print(f"Warnungen: {len(warnungen)}")
+    print(f"Laufzeit Einzeldatei-Schleife: {dauer_einzeln:.1f} s "
+          f"({dauer_einzeln / len(dateien):.1f} s pro Datei)")
+    if dauer_transitiv is not None:
+        print(f"Laufzeit transitive Pruefung:  {dauer_transitiv:.1f} s")
+    print()
 
     for b in fehler + warnungen:
         print(b)
